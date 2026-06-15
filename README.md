@@ -4,11 +4,10 @@ The Smart Stray Rescue System is a real-time dispatch and reporting platform des
 
 ## System Architecture
 
-The application is split into three main components:
+The application is split into two main components:
 
 1. **Frontend**: A React application built with Vite and Tailwind CSS. It uses Leaflet Maps for spatial tracking and Framer Motion for interface animations.
-2. **Backend**: An Express server built with TypeScript and Node.js, using better-sqlite3 for local persistent data storage.
-3. **AI Service**: A local Flask-based python service integrating AI model templates to analyze stray animal reports.
+2. **Backend & AI Service**: A unified Python Flask server running on port 5000, using sqlite3 for persistent data storage, JWT token authentication, and integration with AI model templates.
 
 ---
 
@@ -16,8 +15,7 @@ The application is split into three main components:
 
 ### Service Port Allocation
 - **Frontend Development Server**: Port 3000
-- **Backend Express Server**: Port 3001
-- **AI Prediction Service**: Port 5000
+- **Unified Backend & AI Service**: Port 5000
 
 ### Page Directory
 - **Home (`/`)**: Main landing page presenting the program mission and summary statistics.
@@ -51,7 +49,7 @@ chmod +x run_all.sh
 The startup script will:
 1. Verify and clear port conflicts.
 2. Load cached Colab configurations from the environment.
-3. Seed the local SQLite database with core schemas and demo records.
-4. Launch the Flask AI service in the background.
-5. Initialize the Express server.
+3. Install required Python packages.
+4. Seed the local SQLite database with core schemas and demo records.
+5. Launch the unified Flask Backend & AI service on port 5000 in the background.
 6. Launch the Vite hot-reloading development server on host port 3000.
