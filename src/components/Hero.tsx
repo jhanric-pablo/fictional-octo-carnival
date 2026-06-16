@@ -42,8 +42,8 @@ export default function Hero() {
             transition={{ duration: 0.8, ease: [0.33, 1, 0.68, 1], delay: 0.2 }}
             className="relative z-10 text-[14vw] md:text-[11vw] font-serif font-medium leading-[0.8] tracking-tight text-ink uppercase"
           >
-            Smart Stray <br/>
-            <span className="italic font-light opacity-90 ml-[10vw]">Rescue</span>
+            Smart <br/>
+            <span className="italic font-light opacity-90 ml-[10vw]">Stray</span>
           </motion.h1>
 
           <div className="mt-12 flex flex-col md:flex-row justify-between items-end gap-8 border-t border-ink/20 pt-8">

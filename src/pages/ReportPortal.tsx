@@ -3,13 +3,20 @@ import Navbar from '../components/Navbar';
 import { motion, AnimatePresence } from 'motion/react';
 import { Camera, MapPin, Send, Loader2, CheckCircle, BrainCircuit, Activity, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { API_URL } from '../config';
 
 export default function ReportPortal() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const navigate = useNavigate();
   const routerLocation = useLocation();
-  const locationState = routerLocation.state as { location?: string, description?: string, image_url?: string } | null;
+  const locationState = routerLocation.state as { 
+    location?: string, 
+    description?: string, 
+    image_url?: string,
+    latitude?: number,
+    longitude?: number
+  } | null;
   const [loading, setLoading] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -20,8 +27,8 @@ export default function ReportPortal() {
     description: locationState?.description || '',
     location: locationState?.location || '',
     priority: 'medium',
-    latitude: null as number | null,
-    longitude: null as number | null,
+    latitude: locationState?.latitude || null as number | null,
+    longitude: locationState?.longitude || null as number | null,
     image_url: locationState?.image_url || '',
     animal_type: '',
     ai_confidence: 0,
@@ -165,9 +172,19 @@ export default function ReportPortal() {
           </div>
           <h2 className="text-4xl font-serif italic text-paper mb-4">Report Submitted</h2>
           <p className="text-paper/60 mb-10">Your report has been received and is being processed by the rescue network.</p>
-          <button onClick={() => setSuccess(false)} className="px-8 py-4 bg-primary text-ink font-bold uppercase tracking-widest text-xs rounded-2xl">
-            Submit New Report
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <button onClick={() => setSuccess(false)} className="px-8 py-4 bg-primary text-ink font-bold uppercase tracking-widest text-xs rounded-2xl">
+              Submit New Report
+            </button>
+            {user && (
+              <button 
+                onClick={() => navigate('/citizen-dashboard')} 
+                className="px-8 py-4 bg-white/10 text-paper font-bold uppercase tracking-widest text-xs rounded-2xl hover:bg-white/20 transition-all"
+              >
+                View Report Status
+              </button>
+            )}
+          </div>
         </motion.div>
       </div>
     );
@@ -223,7 +240,7 @@ export default function ReportPortal() {
                     </>
                   )}
                 </div>
-                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImageChange} />
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
               </label>
             </div>
 
@@ -255,39 +272,82 @@ export default function ReportPortal() {
 
           {/* Right: Details */}
           <div className="lg:col-span-7 space-y-10 pt-4">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <InputField label="Location Address" placeholder="Street name, landmark..." value={formData.location} onChange={v => setFormData({...formData, location: v})} />
-                <div className="space-y-3">
-                  <label className="text-[10px] font-bold uppercase tracking-widest text-primary">GPS Coordinates</label>
-                  <button type="button" onClick={handleLocationCapture} className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 flex justify-between items-center group hover:border-primary/30 transition-all">
-                    <span className="text-sm opacity-50 font-serif">{formData.latitude ? `${formData.latitude.toFixed(4)}, ${formData.longitude?.toFixed(4)}` : 'Update Location'}</span>
-                    <MapPin size={18} className={formData.latitude ? "text-primary" : "text-white/20"} />
-                  </button>
-                </div>
-             </div>
+             {!formData.latitude ? (
+               <motion.div 
+                 initial={{ opacity: 0, scale: 0.95 }}
+                 animate={{ opacity: 1, scale: 1 }}
+                 className="bg-primary/5 border border-primary/20 p-12 rounded-[3rem] text-center space-y-8"
+               >
+                 <div className="w-24 h-24 bg-primary/20 rounded-full flex items-center justify-center mx-auto">
+                   <MapPin size={48} className="text-primary animate-bounce" />
+                 </div>
+                 <div className="space-y-4">
+                   <h3 className="text-4xl font-serif italic text-paper">Pinpoint Location</h3>
+                   <p className="text-paper/60 max-w-sm mx-auto leading-relaxed">
+                     To dispatch a rescue unit effectively, we require precise GPS coordinates. Please allow location access to proceed.
+                   </p>
+                 </div>
+                 <button 
+                   type="button" 
+                   onClick={handleLocationCapture}
+                   className="px-12 py-6 bg-primary text-ink font-bold uppercase tracking-[0.3em] text-xs rounded-2xl hover:scale-105 transition-all shadow-[0_0_30px_rgba(125,157,133,0.3)]"
+                 >
+                   Capture GPS & Proceed
+                 </button>
+               </motion.div>
+             ) : (
+               <motion.div 
+                 initial={{ opacity: 0, y: 20 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 className="space-y-10"
+               >
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <InputField label="Location Address" placeholder="Street name, landmark..." value={formData.location} onChange={v => setFormData({...formData, location: v})} />
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-primary">GPS Coordinates</label>
+                      <div className="w-full bg-primary/20 border border-primary/30 rounded-2xl px-6 py-4 flex justify-between items-center group transition-all">
+                        <span className="text-sm font-bold text-primary font-mono tracking-tight">
+                          {formData.latitude.toFixed(6)}, {formData.longitude?.toFixed(6)}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-primary/60">Verified</span>
+                          <CheckCircle size={18} className="text-primary" />
+                        </div>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={handleLocationCapture}
+                        className="text-[10px] font-bold uppercase tracking-widest text-white/30 hover:text-primary transition-colors pl-2"
+                      >
+                        Change Location
+                      </button>
+                    </div>
+                 </div>
 
-             <InputField label="Report Title" placeholder="Short summary of the situation" value={formData.title} onChange={v => setFormData({...formData, title: v})} />
-             
-             <div className="space-y-3">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-primary">Incident Description</label>
-                <textarea 
-                  rows={4}
-                  placeholder="Describe the animal and its condition..."
-                  className="w-full bg-white/5 border border-white/10 rounded-[2rem] px-8 py-6 focus:outline-none focus:border-primary/50 transition-colors resize-none text-paper placeholder:text-white/10 font-serif text-lg"
-                  value={formData.description}
-                  onChange={e => setFormData({...formData, description: e.target.value})}
-                  required
-                />
-             </div>
+                 <InputField label="Report Title" placeholder="Short summary of the situation" value={formData.title} onChange={v => setFormData({...formData, title: v})} />
+                 
+                 <div className="space-y-3">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-primary">Incident Description</label>
+                    <textarea 
+                      rows={4}
+                      placeholder="Describe the animal and its condition..."
+                      className="w-full bg-white/5 border border-white/10 rounded-[2rem] px-8 py-6 focus:outline-none focus:border-primary/50 transition-colors resize-none text-paper placeholder:text-white/10 font-serif text-lg"
+                      value={formData.description}
+                      onChange={e => setFormData({...formData, description: e.target.value})}
+                      required
+                    />
+                 </div>
 
-             <button 
-               type="submit" 
-               disabled={loading || isScanning} 
-               className="w-full py-8 bg-paper text-ink font-bold uppercase tracking-[0.4em] text-xs rounded-[2rem] hover:bg-primary transition-all flex items-center justify-center gap-4 disabled:opacity-50"
-             >
-               {loading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
-               Submit Report
-             </button>
+                 <button 
+                   type="submit" 
+                   disabled={loading || isScanning} 
+                   className="w-full py-8 bg-paper text-ink font-bold uppercase tracking-[0.4em] text-xs rounded-[2rem] hover:bg-primary transition-all flex items-center justify-center gap-4 disabled:opacity-50"
+                 >
+                   {loading ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                   Submit Final Report
+                 </button>
+               </motion.div>
+             )}
           </div>
 
         </form>

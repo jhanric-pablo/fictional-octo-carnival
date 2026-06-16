@@ -6,8 +6,8 @@ async function seed() {
 
   // Clean existing data (optional, but good for consistent demos)
   db.exec("DELETE FROM reports");
-  db.exec("DELETE FROM users WHERE email != 'admin@rescue.org'");
   db.exec("DELETE FROM achievements");
+  db.exec("DELETE FROM users WHERE email != 'admin@rescue.org'");
 
   const hashedRescuerPassword = '$2b$10$UOUczy7pOZN/VW659yRdGuKA.vPKHkWaUPBMtprCc4A11h.SqsHKu';
   const hashedCitizenPassword = '$2b$10$pcP70GgtZm9.4itFFb/LyORbHOrrOLOjDQCV3wSMg0QIHKlYIalV6';

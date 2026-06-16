@@ -1,4 +1,4 @@
-# Smart Stray Rescue - Demo Data & Credentials
+# Smart Stray - Demo Data & Credentials
 
 This document outlines the pre-seeded data for demonstration and testing purposes.
 

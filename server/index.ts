@@ -116,7 +116,7 @@ app.post('/api/staff/login', async (req, res) => {
 
 app.get('/api/reports/public-active', (req, res) => {
   try {
-    const activeReports = db.prepare("SELECT id, title, description, location, latitude, longitude, status, animal_type, created_at FROM reports WHERE status IN ('pending', 'verified', 'assigned', 'in-progress') ORDER BY created_at DESC").all();
+    const activeReports = db.prepare("SELECT id, title, description, location, latitude, longitude, status, animal_type, priority, created_at FROM reports WHERE status IN ('pending', 'verified', 'assigned', 'in-progress') ORDER BY created_at DESC").all();
     res.json(activeReports);
   } catch (e) {
     res.status(500).json({ error: 'Failed to fetch active reports' });

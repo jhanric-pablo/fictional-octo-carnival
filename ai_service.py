@@ -570,7 +570,7 @@ def catch_all(path):
 
 if __name__ == '__main__':
     print("------------------------------------------------")
-    print(f"Starting Smart Stray Rescue Python Service (Port 5000)")
+    print(f"Starting Smart Stray Python Service (Port 5000)")
     print(f"Database Source: {db_path}")
     print(f"Static Folder: {dist_folder}")
     print("------------------------------------------------")

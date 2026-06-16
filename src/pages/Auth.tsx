@@ -159,7 +159,7 @@ export default function Auth() {
             className="mt-12 text-center"
           >
             <p className="text-[9px] uppercase tracking-[0.5em] text-white/20 font-medium">
-              Secure System Access • Smart Stray Rescue Project
+              Secure System Access • Smart Stray Project
             </p>
           </motion.div>
         </motion.div>

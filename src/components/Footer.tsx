@@ -11,7 +11,7 @@ export default function Footer() {
             <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center bg-white shadow-sm border border-black/10">
               <img src="/images/logo.svg" alt="SSR Logo" className="w-full h-full object-cover scale-[1.5]" />
             </div>
-            <span className="font-sans font-bold text-lg leading-none tracking-tight uppercase text-ink">Smart Stray Rescue</span>
+            <span className="font-sans font-bold text-lg leading-none tracking-tight uppercase text-ink">Smart Stray</span>
           </a>
           <p className="text-ink-muted text-sm max-w-sm leading-relaxed mb-8">
             A real-time reporting and rescue management system dedicated to minimizing animal suffering and maximizing community action in Parañaque City.

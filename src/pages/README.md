@@ -1,6 +1,6 @@
 # Page Component Directory
 
-This directory contains the primary page components of the Smart Stray Rescue web application. Each file defines a distinct route view within the system structure.
+This directory contains the primary page components of the Smart Stray web application. Each file defines a distinct route view within the system structure.
 
 ---
 

@@ -10,6 +10,22 @@ export default function ReportSection() {
   const [location, setLocation] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+
+  const handleGPSCapture = () => {
+    setIsCapturing(true);
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        setCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
+        if (!location) setLocation("GPS Coordinates Captured");
+        setIsCapturing(false);
+      }, (error) => {
+        alert("Please enable location services.");
+        setIsCapturing(false);
+      });
+    }
+  };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -82,7 +98,15 @@ export default function ReportSection() {
             className="w-full space-y-12"
             onSubmit={(e) => { 
               e.preventDefault(); 
-              navigate('/report-portal', { state: { location, description, image_url: imageUrl } });
+              navigate('/report-portal', { 
+                state: { 
+                  location, 
+                  description, 
+                  image_url: imageUrl,
+                  latitude: coords?.lat,
+                  longitude: coords?.lng
+                } 
+              });
             }}
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
@@ -107,7 +131,17 @@ export default function ReportSection() {
             </div>
 
             <div className="space-y-4">
-              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-muted">Exact Location</label>
+              <div className="flex justify-between items-end">
+                <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-muted">Exact Location</label>
+                <button 
+                  type="button" 
+                  onClick={handleGPSCapture}
+                  className={`text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 transition-colors ${coords ? 'text-primary' : 'text-ink/40 hover:text-ink'}`}
+                >
+                  <MapPin size={12} className={isCapturing ? "animate-bounce" : ""} />
+                  {coords ? "GPS PINNED" : "PINPOINT WITH GPS"}
+                </button>
+              </div>
               <input 
                 type="text" 
                 placeholder="BF Homes, Phase 1"

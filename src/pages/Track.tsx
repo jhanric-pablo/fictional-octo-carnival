@@ -15,6 +15,51 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
+const statusColors: Record<string, string> = {
+  'pending': '#f59e0b',    // Orange
+  'verified': '#3b82f6',   // Blue
+  'assigned': '#a855f7',   // Purple
+  'in-progress': '#10b981',// Emerald
+  'resolved': '#10b981'    // Emerald
+};
+
+const createCustomIcon = (status: string, priority: string) => {
+  const isHigh = priority === 'high';
+  const color = isHigh ? '#ef4444' : (statusColors[status] || '#ffffff');
+  const isActionNeeded = status === 'in-progress' || status === 'assigned' || isHigh;
+  
+  return L.divIcon({
+    html: `
+      <div style="position: relative; display: flex; items-center; justify-center;">
+        ${isActionNeeded ? `
+          <div style="
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background-color: ${color};
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: marker-pulse 1.5s infinite;
+          "></div>
+        ` : ''}
+        <div style="
+          position: relative;
+          background-color: ${color};
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 0 10px ${color}80;
+          z-index: 2;
+        "></div>
+      </div>
+    `,
+    className: 'custom-status-marker',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
+};
+
 interface ActiveReport {
   id: number;
   title: string;
@@ -23,6 +68,7 @@ interface ActiveReport {
   latitude: number | null;
   longitude: number | null;
   status: string;
+  priority: string;
   animal_type: string | null;
   created_at: string;
 }
@@ -106,24 +152,35 @@ export default function Track() {
                 url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                 attribution='&copy; OpenStreetMap'
               />
-              {activeReports.filter(r => r.latitude && r.longitude).map(r => (
-                <Marker key={r.id} position={[r.latitude!, r.longitude!]}>
+              {activeReports.filter(r => r.latitude && r.longitude && r.status !== 'resolved' && r.status !== 'rejected').map(r => (
+                <Marker key={r.id} position={[r.latitude!, r.longitude!]} icon={createCustomIcon(r.status, r.priority)}>
                   <Popup className="text-ink">
                     <p className="font-bold text-sm">{r.title}</p>
                     <p className="text-[10px] opacity-60">{r.location}</p>
                     <div className="mt-2 flex items-center gap-2">
-                       <span className={`w-2 h-2 rounded-full ${
-                         r.status === 'pending' ? 'bg-yellow-400' :
-                         r.status === 'verified' ? 'bg-blue-400' :
-                         r.status === 'assigned' ? 'bg-purple-400 animate-pulse' :
-                         r.status === 'in-progress' ? 'bg-orange-500 animate-pulse' : 'bg-green-400'
-                       }`} />
-                       <span className="text-[9px] font-bold uppercase tracking-widest">{r.status}</span>
+                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: r.priority === 'high' ? '#ef4444' : statusColors[r.status] }} />
+                       <span className="text-[9px] font-bold uppercase tracking-widest">{r.status} {r.priority === 'high' ? '(CRITICAL)' : ''}</span>
                     </div>
                   </Popup>
                 </Marker>
               ))}
             </MapContainer>
+
+            {/* Map Legend */}
+            <div className="absolute top-8 left-8 p-4 bg-black/60 backdrop-blur-md rounded-2xl border border-paper/10 z-[1000] space-y-2">
+               <p className="text-[8px] font-bold uppercase tracking-widest text-paper/40 mb-2">Live Legend</p>
+               <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#ef4444] animate-pulse" />
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-red-400">High Priority</span>
+               </div>
+               <div className="h-px bg-white/5 my-1" />
+               {Object.entries(statusColors).filter(([k]) => k !== 'resolved' && k !== 'rejected').map(([status, color]) => (
+                 <div key={status} className="flex items-center gap-3">
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-paper/70">{status}</span>
+                 </div>
+               ))}
+            </div>
           </motion.div>
 
           {/* Activity List */}

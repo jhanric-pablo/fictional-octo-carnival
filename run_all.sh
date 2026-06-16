@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Smart Stray Rescue - Unified Startup Script
+# Smart Stray - Unified Startup Script
 # This script runs the Backend, Frontend, and AI Service.
 
 echo "------------------------------------------------"
@@ -32,7 +32,7 @@ fi
 echo "VITE_COLAB_URL=$COLAB_URL" > .env
 
 echo "------------------------------------------------"
-echo "Initializing Smart Stray Rescue System..."
+echo "Initializing Smart Stray System..."
 echo "------------------------------------------------"
 
 # 1. Install Python dependencies for AI Service

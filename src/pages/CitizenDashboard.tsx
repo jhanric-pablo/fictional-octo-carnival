@@ -11,7 +11,8 @@ import {
   Clock, 
   CheckCircle,
   Info,
-  User
+  User,
+  Bell
 } from 'lucide-react';
 
 interface Report {
@@ -26,27 +27,66 @@ interface Achievement {
   earned_at: string;
 }
 
+interface Notification {
+  id: string;
+  message: string;
+  type: 'status_change' | 'achievement';
+}
+
 export default function CitizenDashboard() {
   const { user, token, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'reports' | 'badges'>('reports');
   const [myReports, setMyReports] = useState<Report[]>([]);
   const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const prevReportsRef = React.useRef<Report[]>([]);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
     if (user && token) {
       fetchMyReports();
       fetchAchievements();
+      
+      // Auto-refresh polling every 5 seconds
+      const interval = setInterval(() => {
+        fetchMyReports(true);
+      }, 5000);
+      
+      return () => clearInterval(interval);
     }
   }, [user, loading, token, navigate]);
 
-  const fetchMyReports = async () => {
-    const res = await fetch(`${API_URL}/api/reports`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const data = await res.json();
-    setMyReports(data.filter((r: any) => r.user_id === user?.id));
+  const fetchMyReports = async (isPoll = false) => {
+    try {
+      const res = await fetch(`${API_URL}/api/reports`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const userReports = data.filter((r: any) => r.user_id === user?.id);
+      
+      if (isPoll && prevReportsRef.current.length > 0) {
+        userReports.forEach((report: Report) => {
+          const prev = prevReportsRef.current.find(r => r.id === report.id);
+          if (prev && prev.status !== report.status) {
+            addNotification(`Report "${report.title}" status updated to ${report.status}`);
+          }
+        });
+      }
+      
+      setMyReports(userReports);
+      prevReportsRef.current = userReports;
+    } catch (err) {
+      console.error("Failed to fetch reports:", err);
+    }
+  };
+
+  const addNotification = (message: string) => {
+    const id = Math.random().toString(36).substr(2, 9);
+    setNotifications(prev => [...prev, { id, message, type: 'status_change' }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 5000);
   };
 
   const fetchAchievements = async () => {
@@ -67,6 +107,26 @@ export default function CitizenDashboard() {
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         <div className="absolute top-0 right-0 w-[50vw] h-[50vw] bg-primary/5 blur-[120px] rounded-full" />
         <div className="absolute bottom-0 left-0 w-[40vw] h-[40vw] bg-primary/5 blur-[100px] rounded-full" />
+      </div>
+
+      {/* Notifications Toast */}
+      <div className="fixed top-24 right-6 z-[100] space-y-4">
+        <AnimatePresence>
+          {notifications.map(n => (
+            <motion.div
+              key={n.id}
+              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 20, scale: 0.9 }}
+              className="bg-primary text-ink p-4 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-4 min-w-[300px]"
+            >
+              <div className="bg-ink/10 p-2 rounded-full">
+                <Bell size={18} />
+              </div>
+              <p className="text-xs font-bold uppercase tracking-wider leading-relaxed">{n.message}</p>
+            </motion.div>
+          ))}
+        </AnimatePresence>
       </div>
 
       <div className="relative z-10 pt-32 pb-20 px-6 max-w-7xl mx-auto min-h-screen flex flex-col">

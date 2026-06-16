@@ -15,6 +15,52 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
+
+const statusColors: Record<string, string> = {
+  'pending': '#f59e0b',    // Orange
+  'verified': '#3b82f6',   // Blue
+  'assigned': '#a855f7',   // Purple
+  'in-progress': '#10b981',// Emerald
+  'resolved': '#10b981'    // Emerald
+};
+
+const createCustomIcon = (status: string, priority: string) => {
+  const isHigh = priority === 'high';
+  const color = isHigh ? '#ef4444' : (statusColors[status] || '#ffffff');
+  const isActionNeeded = status === 'in-progress' || status === 'assigned' || isHigh;
+  
+  return L.divIcon({
+    html: `
+      <div style="position: relative; display: flex; items-center; justify-center;">
+        ${isActionNeeded ? `
+          <div style="
+            position: absolute;
+            width: 24px;
+            height: 24px;
+            background-color: ${color};
+            border-radius: 50%;
+            opacity: 0.4;
+            animation: marker-pulse 1.5s infinite;
+          "></div>
+        ` : ''}
+        <div style="
+          position: relative;
+          background-color: ${color};
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          border: 2px solid white;
+          box-shadow: 0 0 10px ${color}80;
+          z-index: 2;
+        "></div>
+      </div>
+    `,
+    className: 'custom-status-marker',
+    iconSize: [24, 24],
+    iconAnchor: [12, 12]
+  });
+};
+
 import { 
   Map as MapIcon, 
   History, 
@@ -31,7 +77,9 @@ import {
   Edit2,
   Trash2,
   Filter,
-  ArrowUpRight
+  ArrowUpRight,
+  Eye,
+  Bell
 } from 'lucide-react';
 
 interface Report {
@@ -48,6 +96,7 @@ interface Report {
   ai_confidence: number | null;
   facial_expression: string | null;
   rejection_reason: string | null;
+  assigned_to: number | null;
   created_at: string;
 }
 
@@ -72,25 +121,53 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [viewingReport, setViewingReport] = useState<Report | null>(null);
   const [assigningReportId, setAssigningReportId] = useState<number | null>(null);
   const [rescuerSearch, setRescuerSearch] = useState('');
   const [rescuerSort, setRescuerSort] = useState<'email' | 'id'>('email');
+  const [notifications, setNotifications] = useState<{id: string, message: string}[]>([]);
+  const maxSeenId = React.useRef<number>(0);
+  const isInitialized = React.useRef<boolean>(false);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
     if (user && token) {
-      fetchReports();
+      fetchReports(true); // Initial fetch
       fetchUsers();
+      
+      const interval = setInterval(() => fetchReports(false), 5000);
+      return () => clearInterval(interval);
     }
   }, [user, loading, token, navigate]);
 
-  const fetchReports = async () => {
+  const fetchReports = async (isInitial: boolean) => {
     try {
       const res = await fetch(`${API_URL}/api/reports`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const data = await res.json();
-      console.log(`[Dashboard] Fetched ${data.length} reports`);
+      const data: Report[] = await res.json();
+      
+      if (data.length > 0) {
+        const currentMax = Math.max(...data.map(r => r.id));
+        
+        if (!isInitialized.current) {
+          maxSeenId.current = currentMax;
+          isInitialized.current = true;
+        } else if (user?.role === 'admin') {
+          const newReports = data.filter(nr => nr.id > maxSeenId.current);
+          if (newReports.length > 0) {
+            newReports.forEach(nr => {
+              const newNotif = { id: Date.now().toString() + nr.id, message: `New Incident: ${nr.title}` };
+              setNotifications(prev => [newNotif, ...prev]);
+              setTimeout(() => {
+                setNotifications(prev => prev.filter(n => n.id !== newNotif.id));
+              }, 5000);
+            });
+            maxSeenId.current = currentMax;
+          }
+        }
+      }
+
       setReports(data);
     } catch (e) {
       console.error("[Dashboard] Fetch error:", e);
@@ -113,7 +190,7 @@ export default function AdminDashboard() {
       method: 'DELETE',
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    fetchReports();
+    fetchReports(false);
   };
 
   const updateReport = async (id: number, payload: any) => {
@@ -123,7 +200,8 @@ export default function AdminDashboard() {
       body: JSON.stringify(payload)
     });
     setEditingReport(null);
-    fetchReports();
+    setViewingReport(null);
+    fetchReports(false);
   };
 
   const updateUserRole = async (id: number, role: string) => {
@@ -176,6 +254,25 @@ export default function AdminDashboard() {
     <div className="min-h-screen bg-ink text-paper selection:bg-primary/30 relative overflow-hidden">
       <Navbar dark />
       
+      {/* Notification Toast System */}
+      <div className="fixed top-24 right-6 z-[300] space-y-4">
+        <AnimatePresence>
+          {notifications.map(n => (
+            <motion.div 
+              key={n.id}
+              initial={{ opacity: 0, x: 50, scale: 0.9 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+              className="bg-primary text-ink px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-4 border border-white/20 backdrop-blur-xl"
+            >
+              <Bell size={18} className="animate-bounce" />
+              <p className="font-bold text-xs uppercase tracking-widest">{n.message}</p>
+              <button onClick={() => setNotifications(prev => prev.filter(item => item.id !== n.id))} className="ml-4 opacity-40 hover:opacity-100"><X size={14}/></button>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+
       <div className="relative z-10 pt-32 pb-20 px-6 max-w-[100rem] mx-auto min-h-screen flex flex-col">
         
         {/* Header Section */}
@@ -230,19 +327,35 @@ export default function AdminDashboard() {
                           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
                           attribution='&copy; OpenStreetMap'
                         />
-                        {filteredReports.filter(r => r.latitude && r.longitude).map(r => (
-                          <Marker key={r.id} position={[r.latitude!, r.longitude!]}>
+                        {filteredReports.filter(r => r.latitude && r.longitude && r.status !== 'resolved' && r.status !== 'rejected').map(r => (
+                          <Marker key={r.id} position={[r.latitude!, r.longitude!]} icon={createCustomIcon(r.status, r.priority)}>
                             <Popup className="text-ink">
                               <p className="font-bold text-sm">{r.title}</p>
                               <p className="text-[10px] opacity-60">{r.location}</p>
                               <div className="mt-2 flex items-center gap-2">
-                                 <span className={`w-2 h-2 rounded-full ${r.priority === 'high' ? 'bg-red-500' : 'bg-primary'}`} />
-                                 <span className="text-[9px] font-bold uppercase tracking-widest">{r.status}</span>
+                                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: r.priority === 'high' ? '#ef4444' : statusColors[r.status] }} />
+                                 <span className="text-[9px] font-bold uppercase tracking-widest">{r.status} {r.priority === 'high' ? '(CRITICAL)' : ''}</span>
                               </div>
                             </Popup>
                           </Marker>
                         ))}
                       </MapContainer>
+
+                      {/* Map Legend */}
+                      <div className="absolute top-8 left-8 p-4 bg-black/60 backdrop-blur-md rounded-2xl border border-white/10 z-[1000] space-y-2">
+                         <p className="text-[8px] font-bold uppercase tracking-widest text-white/40 mb-2">Live Legend</p>
+                         <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 rounded-full bg-[#ef4444] animate-pulse" />
+                            <span className="text-[9px] font-bold uppercase tracking-widest text-red-400">High Priority</span>
+                         </div>
+                         <div className="h-px bg-white/5 my-1" />
+                         {Object.entries(statusColors).filter(([k]) => k !== 'resolved' && k !== 'rejected').map(([status, color]) => (
+                           <div key={status} className="flex items-center gap-3">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                              <span className="text-[9px] font-bold uppercase tracking-widest text-white/70">{status}</span>
+                           </div>
+                         ))}
+                      </div>
 
                       <div className="absolute bottom-8 left-8 right-8 p-6 bg-black/80 backdrop-blur-xl rounded-2xl border border-white/10 z-[1000]">
                          <div className="flex justify-between items-center mb-4">
@@ -273,11 +386,12 @@ export default function AdminDashboard() {
                         Dispatch Queue
                         <div className="h-px flex-1 bg-white/5" />
                       </h2>
-                      <div className="flex items-center gap-3 bg-white/5 p-1 rounded-xl border border-white/10 w-full md:w-auto">
+                      <div className="flex flex-wrap items-center gap-3 bg-white/5 p-1 rounded-xl border border-white/10 w-full md:w-auto">
                          <FilterButton active={statusFilter === 'all'} onClick={() => setStatusFilter('all')} label="All" />
                          <FilterButton active={statusFilter === 'pending'} onClick={() => setStatusFilter('pending')} label="Pending" />
                          <FilterButton active={statusFilter === 'verified'} onClick={() => setStatusFilter('verified')} label="Verified" />
                          <FilterButton active={statusFilter === 'assigned'} onClick={() => setStatusFilter('assigned')} label="Assigned" />
+                         <FilterButton active={statusFilter === 'in-progress'} onClick={() => setStatusFilter('in-progress')} label="Active" />
                       </div>
                    </div>
 
@@ -285,17 +399,22 @@ export default function AdminDashboard() {
                       {filteredReports.filter(r => r.status !== 'resolved').map(report => (
                         <motion.div key={report.id} layout className="p-8 bg-white/5 rounded-[2.5rem] border border-white/10 hover:border-primary/30 transition-all group relative overflow-hidden">
                            
-                           {/* Admin Power Controls */}
-                           {user.role === 'admin' && (
-                             <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                <button onClick={() => setEditingReport(report)} className="p-2 bg-white/5 rounded-lg hover:bg-primary hover:text-ink transition-all">
-                                   <Edit2 size={14} />
-                                </button>
-                                <button onClick={() => deleteReport(report.id)} className="p-2 bg-white/5 rounded-lg hover:bg-red-500 transition-all">
-                                   <Trash2 size={14} />
-                                </button>
-                             </div>
-                           )}
+                           {/* Power Controls */}
+                           <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                              <button onClick={() => setViewingReport(report)} className="p-2 bg-white/5 rounded-lg hover:bg-white/10 transition-all text-primary" title="View Details">
+                                 <Eye size={14} />
+                              </button>
+                              {user.role === 'admin' && (
+                                <>
+                                  <button onClick={() => setEditingReport(report)} className="p-2 bg-white/5 rounded-lg hover:bg-primary hover:text-ink transition-all">
+                                     <Edit2 size={14} />
+                                  </button>
+                                  <button onClick={() => deleteReport(report.id)} className="p-2 bg-white/5 rounded-lg hover:bg-red-500 transition-all">
+                                     <Trash2 size={14} />
+                                  </button>
+                                </>
+                              )}
+                           </div>
 
                            <div className="flex justify-between items-start mb-6 pr-28">
                               <span className={`text-[9px] px-3 py-1 rounded-full border font-bold uppercase tracking-widest ${
@@ -315,13 +434,13 @@ export default function AdminDashboard() {
                            </p>
 
                            {report.image_url && (
-                             <div className="aspect-video rounded-2xl overflow-hidden border border-white/5 mb-6 bg-black/40">
+                             <div className="aspect-video rounded-2xl overflow-hidden border border-white/5 mb-6 bg-black/40 cursor-pointer" onClick={() => setViewingReport(report)}>
                                 <img src={report.image_url} alt="Incident" className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-700" />
                              </div>
                            )}
 
                            <div className="flex flex-wrap gap-2 pt-6 border-t border-white/5">
-                              {report.status === 'pending' && (
+                              {report.status === 'pending' && user.role === 'admin' && (
                                 <>
                                   <button onClick={() => updateReport(report.id, { status: 'verified' })} className="flex-1 py-3 bg-primary text-ink text-[9px] font-bold uppercase tracking-widest rounded-xl hover:scale-105 transition-all">
                                     Approve Report
@@ -331,7 +450,7 @@ export default function AdminDashboard() {
                                   </button>
                                 </>
                               )}
-                              {report.status === 'verified' && (
+                              {report.status === 'verified' && user.role === 'admin' && (
                                 <button 
                                   onClick={() => setAssigningReportId(report.id)}
                                   className="flex-1 py-3 bg-primary text-ink text-[9px] font-bold uppercase tracking-widest rounded-xl hover:scale-105 transition-all"
@@ -340,13 +459,39 @@ export default function AdminDashboard() {
                                 </button>
                               )}
                               {report.status === 'assigned' && (
-                                <button className="flex-1 py-3 bg-white/5 text-white/40 text-[9px] font-bold uppercase tracking-widest rounded-xl cursor-not-allowed">
-                                   Awaiting Field Acceptance
-                                </button>
+                                <>
+                                  {user.role === 'rescuer' && report.assigned_to === user.id ? (
+                                    <button 
+                                      onClick={() => updateReport(report.id, { status: 'in-progress' })}
+                                      className="flex-1 py-3 bg-primary text-ink text-[9px] font-bold uppercase tracking-widest rounded-xl hover:scale-105 transition-all shadow-[0_0_20px_rgba(var(--primary-rgb),0.3)] animate-pulse"
+                                    >
+                                      Accept Mission
+                                    </button>
+                                  ) : (
+                                    <button className="flex-1 py-3 bg-white/5 text-white/40 text-[9px] font-bold uppercase tracking-widest rounded-xl cursor-not-allowed">
+                                       Awaiting Field Acceptance
+                                    </button>
+                                  )}
+                                </>
                               )}
                               {report.status === 'in-progress' && (
-                                <button onClick={() => updateReport(report.id, { status: 'resolved' })} className="flex-1 py-3 bg-primary/20 text-primary text-[9px] font-bold uppercase tracking-widest rounded-xl hover:bg-primary hover:text-ink transition-all">
-                                  Finalize Resolution
+                                <>
+                                  {user.role === 'rescuer' && report.assigned_to === user.id ? (
+                                    <button onClick={() => updateReport(report.id, { status: 'resolved' })} className="flex-1 py-3 bg-primary text-ink text-[9px] font-bold uppercase tracking-widest rounded-xl hover:scale-105 transition-all">
+                                      Mark as Resolved
+                                    </button>
+                                  ) : (
+                                    <button className="flex-1 py-3 bg-primary/20 text-primary text-[9px] font-bold uppercase tracking-widest rounded-xl cursor-default">
+                                      Unit on Site
+                                    </button>
+                                  )}
+                                </>
+                              )}
+                              {/* View Details Button for Rescuers when they can't perform status actions */}
+                              {user.role === 'rescuer' && (report.status === 'verified' || (report.status === 'assigned' && report.assigned_to !== user.id)) && (
+                                <button onClick={() => setViewingReport(report)} className="flex-1 py-3 bg-white/5 text-white text-[9px] font-bold uppercase tracking-widest rounded-xl hover:bg-white/10 transition-all flex items-center justify-center gap-2">
+                                  <Eye size={12} />
+                                  View Details
                                 </button>
                               )}
                            </div>
@@ -409,12 +554,14 @@ export default function AdminDashboard() {
                           <td className="px-10 py-8 opacity-30 text-[10px] font-bold uppercase">{new Date(log.created_at).toLocaleDateString()}</td>
                           <td className="px-10 py-8">
                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                                <button onClick={() => setEditingReport(log)} className="p-2 text-white/20 hover:text-primary transition-all">
+                                <button onClick={() => setViewingReport(log)} className="p-2 text-white/20 hover:text-primary transition-all">
                                    <ArrowUpRight size={16} />
                                 </button>
-                                <button onClick={() => deleteReport(log.id)} className="p-2 text-white/20 hover:text-red-500 transition-all">
-                                   <Trash2 size={16} />
-                                </button>
+                                {user.role === 'admin' && (
+                                  <button onClick={() => deleteReport(log.id)} className="p-2 text-white/20 hover:text-red-500 transition-all">
+                                     <Trash2 size={16} />
+                                  </button>
+                                )}
                              </div>
                           </td>
                         </tr>
@@ -425,7 +572,7 @@ export default function AdminDashboard() {
             )}
 
             {/* Global User Management */}
-            {activeTab === 'users' && (
+            {activeTab === 'users' && user.role === 'admin' && (
               <motion.div key="users" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white/5 rounded-[3rem] border border-white/10 overflow-hidden">
                  <div className="px-10 py-8 border-b border-white/5 flex justify-between items-center bg-white/[0.02]">
                     <h3 className="text-xs font-bold uppercase tracking-widest opacity-40">Fleet & Personnel Registry</h3>
@@ -511,6 +658,106 @@ export default function AdminDashboard() {
                         <button onClick={() => updateReport(editingReport.id, editingReport)} className="flex-1 py-5 bg-primary text-ink font-bold uppercase tracking-widest text-xs rounded-2xl hover:scale-[1.02] transition-all">Save Changes</button>
                         <button onClick={() => setEditingReport(null)} className="px-10 py-5 bg-white/5 text-paper font-bold uppercase tracking-widest text-xs rounded-2xl">Cancel</button>
                      </div>
+                  </div>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Report View Details Modal */}
+      <AnimatePresence>
+        {viewingReport && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setViewingReport(null)} className="absolute inset-0 bg-ink/90 backdrop-blur-md" />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0, y: 20 }} 
+              animate={{ scale: 1, opacity: 1, y: 0 }} 
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-3xl bg-zinc-900 border border-white/10 rounded-[3rem] overflow-hidden shadow-2xl flex flex-col md:flex-row max-h-[90vh]"
+            >
+               {viewingReport.image_url && (
+                 <div className="md:w-1/2 bg-black flex items-center justify-center overflow-hidden border-b md:border-b-0 md:border-r border-white/10">
+                    <img src={viewingReport.image_url} alt="Animal" className="w-full h-full object-cover" />
+                 </div>
+               )}
+               <div className={`p-10 flex flex-col ${viewingReport.image_url ? 'md:w-1/2' : 'w-full'} overflow-y-auto`}>
+                  <div className="flex justify-between items-start mb-6">
+                     <div>
+                        <span className={`text-[8px] px-2 py-0.5 rounded-full border font-bold uppercase tracking-widest mb-2 inline-block ${viewingReport.priority === 'high' ? 'border-red-500 text-red-400' : 'border-primary text-primary'}`}>
+                           {viewingReport.priority} Priority
+                        </span>
+                        <h2 className="text-3xl font-serif italic text-paper">{viewingReport.title}</h2>
+                     </div>
+                     <button onClick={() => setViewingReport(null)} className="p-2 hover:bg-white/5 rounded-full transition-colors text-white/40"><X size={20}/></button>
+                  </div>
+
+                  <div className="space-y-6">
+                     <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">Geolocation</p>
+                        <p className="text-sm opacity-60 flex items-center gap-2">
+                           <MapPin size={14} />
+                           {viewingReport.location}
+                        </p>
+                     </div>
+
+                     <div>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-2">Description</p>
+                        <p className="text-sm opacity-80 leading-relaxed font-light">{viewingReport.description}</p>
+                     </div>
+
+                     <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-primary mb-4 flex items-center gap-2">
+                           <Activity size={14} />
+                           AI Diagnostic Analysis
+                        </p>
+                        <div className="grid grid-cols-2 gap-4">
+                           <div>
+                              <p className="text-[8px] opacity-40 uppercase tracking-widest mb-1">Species</p>
+                              <p className="text-sm font-serif">{viewingReport.animal_type || 'Unknown'}</p>
+                           </div>
+                           <div>
+                              <p className="text-[8px] opacity-40 uppercase tracking-widest mb-1">State/Expression</p>
+                              <p className="text-sm font-serif">{viewingReport.facial_expression || 'Neutral'}</p>
+                           </div>
+                           <div className="col-span-2">
+                              <p className="text-[8px] opacity-40 uppercase tracking-widest mb-2">AI Confidence Score</p>
+                              <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                                 <motion.div 
+                                    initial={{ width: 0 }} 
+                                    animate={{ width: `${(viewingReport.ai_confidence || 0.5) * 100}%` }}
+                                    className="h-full bg-primary"
+                                 />
+                              </div>
+                              <p className="text-[10px] mt-2 font-bold opacity-60">{(viewingReport.ai_confidence || 0.5) * 100}% Confidence</p>
+                           </div>
+                        </div>
+                     </div>
+
+                     <div className="pt-6 border-t border-white/5">
+                        <div className="flex justify-between items-center text-[10px] uppercase tracking-widest opacity-40 font-bold">
+                           <span>Report ID: #SSR-{viewingReport.id.toString().padStart(4, '0')}</span>
+                           <span>{new Date(viewingReport.created_at).toLocaleDateString()}</span>
+                        </div>
+                     </div>
+
+                     {user.role === 'rescuer' && viewingReport.status === 'assigned' && viewingReport.assigned_to === user.id && (
+                        <button 
+                           onClick={() => updateReport(viewingReport.id, { status: 'in-progress' })}
+                           className="w-full py-4 bg-primary text-ink font-bold uppercase tracking-widest text-xs rounded-xl hover:scale-[1.02] transition-all shadow-lg"
+                        >
+                           Accept Mission
+                        </button>
+                     )}
+                     
+                     {user.role === 'rescuer' && viewingReport.status === 'in-progress' && viewingReport.assigned_to === user.id && (
+                        <button 
+                           onClick={() => updateReport(viewingReport.id, { status: 'resolved' })}
+                           className="w-full py-4 bg-primary text-ink font-bold uppercase tracking-widest text-xs rounded-xl hover:scale-[1.02] transition-all shadow-lg"
+                        >
+                           Mark as Resolved
+                        </button>
+                     )}
                   </div>
                </div>
             </motion.div>

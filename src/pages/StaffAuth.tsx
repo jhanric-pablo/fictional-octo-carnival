@@ -145,7 +145,7 @@ export default function StaffAuth() {
             className="mt-12 text-center"
           >
             <p className="text-[9px] uppercase tracking-[0.5em] text-white/20 font-medium">
-              Secure Staff Terminal • Smart Stray Rescue Project
+              Secure Staff Terminal • Smart Stray Project
             </p>
           </motion.div>
         </motion.div>

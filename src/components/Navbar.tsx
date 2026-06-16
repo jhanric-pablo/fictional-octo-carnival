@@ -69,10 +69,10 @@ export default function Navbar({ dark = false }: NavbarProps) {
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group pointer-events-auto">
           <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center bg-white shadow-sm border border-black/10 transition-all duration-300 group-hover:scale-105">
-            <img src="/images/logo.svg" alt="SSR Logo" className="w-full h-full object-cover scale-[1.5]" />
+            <img src="/images/logo.svg" alt="Smart Stray Logo" className="w-full h-full object-cover scale-[1.5]" />
           </div>
           <div className="flex flex-col justify-center text-current">
-            <span className="font-sans font-bold text-sm tracking-widest uppercase">Smart Stray Rescue</span>
+            <span className="font-sans font-bold text-sm tracking-widest uppercase">Smart Stray</span>
             <span className="text-[9px] font-medium tracking-[0.2em] opacity-60 uppercase mt-0.5">Parañaque City Division</span>
           </div>
         </Link>

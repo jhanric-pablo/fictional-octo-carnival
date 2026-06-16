@@ -1,6 +1,6 @@
-# Smart Stray Rescue System
+# Smart Stray System
 
-The Smart Stray Rescue System is a real-time dispatch and reporting platform designed to coordinate stray animal rescue operations across Parañaque City. The system enables community members to report incidents and allows administrators and rescue operatives to manage dispatches, track field teams, and analyze operations.
+The Smart Stray System is a real-time dispatch and reporting platform designed to coordinate stray animal rescue operations across Parañaque City. The system enables community members to report incidents and allows administrators and rescue operatives to manage dispatches, track field teams, and analyze operations.
 
 ## System Architecture
 

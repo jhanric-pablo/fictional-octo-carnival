@@ -60,7 +60,7 @@ export default function Mission() {
               transition={{ duration: 1, delay: 0.3 }}
               className="text-paper/60 text-lg md:text-xl leading-relaxed max-w-sm font-light"
             >
-              Smart Stray Rescue bridges the gap between concerned citizens and active rescue units by providing a centralized, real-time alert system. By integrating location mapping and instant dispatch features, we drastically reduce the response time for animals in distress.
+              Smart Stray bridges the gap between concerned citizens and active rescue units by providing a centralized, real-time alert system. By integrating location mapping and instant dispatch features, we drastically reduce the response time for animals in distress.
             </motion.p>
           </div>
 

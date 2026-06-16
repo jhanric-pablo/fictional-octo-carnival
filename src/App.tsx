@@ -4,6 +4,7 @@ import Home from './pages/Home';
 import Auth from './pages/Auth';
 import StaffAuth from './pages/StaffAuth';
 import Dashboard from './pages/Dashboard';
+import CitizenDashboard from './pages/CitizenDashboard';
 import ScrollToTop from './components/ScrollToTop';
 
 import ProtectedRoute from './components/ProtectedRoute';
@@ -27,6 +28,11 @@ export default function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/citizen-dashboard" element={
+            <ProtectedRoute>
+              <CitizenDashboard />
             </ProtectedRoute>
           } />
           <Route path="/report-portal" element={<ReportPortal />} />
