@@ -182,7 +182,7 @@ export default function CitizenDashboard() {
                               </div>
                               <div>
                                 <h3 className="text-xl font-serif mb-1">{report.title}</h3>
-                                <p className="text-[10px] opacity-40 uppercase tracking-widest">{new Date(report.created_at).toLocaleDateString()}</p>
+                                <p className="text-[10px] opacity-40 uppercase tracking-widest">{new Date(report.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</p>
                               </div>
                             </div>
                             <div className="flex items-center gap-8">
@@ -222,7 +222,7 @@ export default function CitizenDashboard() {
                       <Medal size={40} />
                     </div>
                     <h4 className="text-xl font-serif mb-2">{badge.badge_name}</h4>
-                    <p className="text-[10px] opacity-30 uppercase tracking-widest">Earned {new Date(badge.earned_at).toLocaleDateString()}</p>
+                    <p className="text-[10px] opacity-30 uppercase tracking-widest">Earned {new Date(badge.earned_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</p>
                   </div>
                 ))}
               </motion.div>

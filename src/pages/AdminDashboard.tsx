@@ -551,7 +551,7 @@ export default function AdminDashboard() {
                           <td className="px-10 py-8 font-serif text-lg">#SSR-{log.id.toString().padStart(4, '0')}</td>
                           <td className="px-10 py-8 opacity-80">{log.animal_type || 'Unknown'} - {log.title}</td>
                           <td className="px-10 py-8 opacity-60 font-light">{log.location}</td>
-                          <td className="px-10 py-8 opacity-30 text-[10px] font-bold uppercase">{new Date(log.created_at).toLocaleDateString()}</td>
+                          <td className="px-10 py-8 opacity-30 text-[10px] font-bold uppercase">{new Date(log.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</td>
                           <td className="px-10 py-8">
                              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
                                 <button onClick={() => setViewingReport(log)} className="p-2 text-white/20 hover:text-primary transition-all">
@@ -737,7 +737,7 @@ export default function AdminDashboard() {
                      <div className="pt-6 border-t border-white/5">
                         <div className="flex justify-between items-center text-[10px] uppercase tracking-widest opacity-40 font-bold">
                            <span>Report ID: #SSR-{viewingReport.id.toString().padStart(4, '0')}</span>
-                           <span>{new Date(viewingReport.created_at).toLocaleDateString()}</span>
+                           <span>{new Date(viewingReport.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
                         </div>
                      </div>
 

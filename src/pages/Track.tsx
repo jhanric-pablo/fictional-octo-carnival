@@ -221,7 +221,7 @@ export default function Track() {
                   
                   <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest text-paper/40 border-t border-paper/10 pt-4 mt-4">
                     <span>{op.animal_type || 'Animal'}</span>
-                    <span className="text-white/60 font-light font-sans text-[10px] lowercase">{new Date(op.created_at).toLocaleDateString()}</span>
+                    <span className="text-white/60 font-light font-sans text-[10px] lowercase">{new Date(op.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}</span>
                   </div>
                 </motion.div>
               ))
